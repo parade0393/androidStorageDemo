@@ -72,21 +72,22 @@ class MainActivity : AppCompatActivity() {
         thread {
             try {
                 val url =
-                    URL("https://cdn.pixabay.com/photo/2020/04/02/11/20/fungus-4994622_960_720.jpg")
+                    URL("https://img-blog.csdnimg.cn/20200520211751565.jpeg")
                 val connection = url.openConnection() as HttpURLConnection
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 8000
                 connection.readTimeout = 8000
-                val values = ContentValues()
-                //创建文件名
-                values.put(MediaStore.MediaColumns.DISPLAY_NAME, "12345.jpg")
+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    //创建文件路径
+                    val values = ContentValues()
+                    //创建文件名
+                    values.put(MediaStore.MediaColumns.DISPLAY_NAME, "12345.jpeg")
+                    //创建共享文件路径
                    /* values.put(
                         MediaStore.MediaColumns.RELATIVE_PATH,
                         "${Environment.DIRECTORY_DOWNLOADS}/${packageName}/a"
                     )*/
-                //这个api在Android10之前没有 MediaStore.MediaColumns.RELATIVE_PATH
+                //创建私有文件路径这个api在Android10之前没有 MediaStore.MediaColumns.RELATIVE_PATH
                     values.put(MediaStore.MediaColumns.RELATIVE_PATH,"${getExternalFilesDir(null)}/download")
                     //创建文件URI (MediaStore.Downloads在Android10之前也没有
                     val uri =
@@ -100,10 +101,25 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     }
+                }else{
+
+                    val picFile = File("${getExternalFilesDir(null)}/10/pic.jpeg")
+                    picFile.let {
+                        picFile.parentFile?.let {pF->
+                            if (!pF.exists()) pF.mkdirs()
+                        }
+                        if (it.exists()) it.delete()
+                    }
+                    connection.inputStream.use {inputstream->
+                        BufferedOutputStream(FileOutputStream(picFile)).use { outputStream->
+                            inputstream.copyTo(outputStream)//下载成功只是不在手机图库里显示
+                        }
+                    }
                 }
 
             } catch (e: Exception) {
                 e.printStackTrace()
+                Log.e(TAG, e.message?:"10")
             }
         }
     }
@@ -112,11 +128,17 @@ class MainActivity : AppCompatActivity() {
         thread {
             try {
                 val url =
-                    URL("https://cdn.pixabay.com/photo/2020/04/02/11/20/fungus-4994622_960_720.jpg")
+                    URL("https://img-blog.csdnimg.cn/20200520211751565.jpeg")
                 val conn = url.openConnection() as HttpURLConnection
-                val picFile = File("${getExternalFilesDir(null)?.parentFile}/parade/parade.jpg")
-                picFile.parentFile?.let {
-                    if (!it.exists()) it.mkdir()
+                val sPath = File(getExternalFilesDir(null),"pic")
+//                val picFile = File("$sPath/pic.jpeg")//方法1//android/data/packgename/files/pic
+                val picFile = File("${getExternalFilesDir(null)}/parade/parade.jpeg")//android/data/packgename/files/parade
+
+                picFile.let {
+                   picFile.parentFile?.let {pF->
+                       if (!pF.exists()) pF.mkdirs()
+                   }
+                    if (it.exists()) it.delete()
                 }
                 conn.inputStream.use { intput ->
                     BufferedOutputStream(FileOutputStream(picFile)).use { output ->
@@ -124,7 +146,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: Exception) {
-
+                e.printStackTrace()
             }
         }
     }
