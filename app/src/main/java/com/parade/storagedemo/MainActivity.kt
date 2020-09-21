@@ -29,6 +29,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            //手机正在运行的版本号大于6.0->申请权限
             if (ContextCompat.checkSelfPermission(
                     this,
                     android.Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -81,11 +82,13 @@ class MainActivity : AppCompatActivity() {
                 values.put(MediaStore.MediaColumns.DISPLAY_NAME, "12345.jpg")
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     //创建文件路径
-                    values.put(
+                   /* values.put(
                         MediaStore.MediaColumns.RELATIVE_PATH,
-                        "${Environment.DIRECTORY_DOWNLOADS}/${packageName}/"
-                    )
-                    //创建文件URI
+                        "${Environment.DIRECTORY_DOWNLOADS}/${packageName}/a"
+                    )*/
+                //这个api在Android10之前没有 MediaStore.MediaColumns.RELATIVE_PATH
+                    values.put(MediaStore.MediaColumns.RELATIVE_PATH,"${getExternalFilesDir(null)}/download")
+                    //创建文件URI (MediaStore.Downloads在Android10之前也没有
                     val uri =
                         contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
                     connection.inputStream.use { input ->
