@@ -1,12 +1,15 @@
 package com.parade.storagedemo
 
+import android.content.ContentResolver
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import kotlinx.android.synthetic.main.activity_main.*
@@ -15,9 +18,10 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import java.nio.file.Files.createFile
 import kotlin.concurrent.thread
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), View.OnClickListener {
 
     companion object {
         const val TAG = "MainActivity"
@@ -57,17 +61,17 @@ class MainActivity : AppCompatActivity() {
         val cachePath = externalCacheDir?.absolutePath
         Log.e(TAG, "external-file-path:${cachePath}")
 
-        button9.setOnClickListener {
-            download()
-        }
+        button9.setOnClickListener(this)
 
-        button10.setOnClickListener {
-            android10Download()
-        }
+        button10.setOnClickListener(this)
+
+        upload.setOnClickListener(this)
 
     }
 
-    /** android10需要先创建一个URI,而创建URI需要ContentValues */
+    /**
+     * android10 以后分为沙河目录和公共目录 沙盒目录可直接通过File操作，公共目录则的通过MediaStore或者saf
+     * android10需要先创建一个URI,而创建URI需要ContentValues */
     private fun android10Download() {
         thread {
             try {
@@ -91,28 +95,14 @@ class MainActivity : AppCompatActivity() {
                     values.put(MediaStore.MediaColumns.RELATIVE_PATH,"${getExternalFilesDir(null)}/download")
                     //创建文件URI (MediaStore.Downloads在Android10之前也没有
                     val uri =
-                        contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                    connection.inputStream.use { input ->
+                            contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    connection.inputStream.use { input ->//use扩展函数会自动关闭流
                         uri?.let { uri ->
                             contentResolver.openOutputStream(uri).use { output ->
                                 output?.let {
                                     input.copyTo(it)
                                 }
                             }
-                        }
-                    }
-                }else{
-
-                    val picFile = File("${getExternalFilesDir(null)}/10/pic.jpeg")
-                    picFile.let {
-                        picFile.parentFile?.let {pF->
-                            if (!pF.exists()) pF.mkdirs()
-                        }
-                        if (it.exists()) it.delete()
-                    }
-                    connection.inputStream.use {inputstream->
-                        BufferedOutputStream(FileOutputStream(picFile)).use { outputStream->
-                            inputstream.copyTo(outputStream)//下载成功只是不在手机图库里显示
                         }
                     }
                 }
@@ -130,24 +120,65 @@ class MainActivity : AppCompatActivity() {
                 val url =
                     URL("https://img-blog.csdnimg.cn/20200520211751565.jpeg")
                 val conn = url.openConnection() as HttpURLConnection
-                val sPath = File(getExternalFilesDir(null),"pic")
+                val sPath = File(getExternalFilesDir(null),"pic")//创建文件1
 //                val picFile = File("$sPath/pic.jpeg")//方法1//android/data/packgename/files/pic
-                val picFile = File("${getExternalFilesDir(null)}/parade/parade.jpeg")//android/data/packgename/files/parade
 
-                picFile.let {
-                   picFile.parentFile?.let {pF->
+                //创建文件2
+                val picFile = File("${getExternalFilesDir(null)}/parade/parade.jpeg")//android/data/packgename/files/parade
+                //创建文件3
+                val filepath = getExternalFilesDir("dir")?.absolutePath
+                val newFile = File("${filepath}${File.separator}file.jpeg")
+
+                newFile.let {
+                    newFile.parentFile?.let {pF->
                        if (!pF.exists()) pF.mkdirs()
                    }
                     if (it.exists()) it.delete()
                 }
                 conn.inputStream.use { intput ->
-                    BufferedOutputStream(FileOutputStream(picFile)).use { output ->
+                    BufferedOutputStream(FileOutputStream(newFile)).use { output ->
                         intput.copyTo(output)
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    override fun onClick(v: View?) {
+        when(v?.id){
+            R.id.button9-> download()
+            R.id.button10 -> android10Download()
+            R.id.upload -> upload()
+        }
+    }
+
+    private fun createFile(){
+
+    }
+
+    private fun upload(){
+        Intent(Intent.ACTION_GET_CONTENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+            val arrayOf = arrayOf("images/*", "application/pdf")
+            putExtra(Intent.EXTRA_MIME_TYPES,arrayOf)
+        }.also {
+            startActivityForResult(it,2)
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data
+        Log.d(TAG, "onActivityResult: uri:$uri")
+        if (uri?.scheme == ContentResolver.SCHEME_FILE){
+            Log.d(TAG, "onActivityResult: SCHEME_FILE")
+        }else if (uri?.scheme == ContentResolver.SCHEME_CONTENT){
+            Log.d(TAG, "onActivityResult: SCHEME_CONTENT")
+        }else{
+            Log.d(TAG, "onActivityResult: ${uri?.scheme}")
         }
     }
 }
